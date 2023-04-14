@@ -60,8 +60,6 @@ import ca.pfv.spmf.tools.MemoryLogger;
  * @author Philippe Fournier-Viger, Ryan Benton, Blake Johns
  */
 
-// TODO: READ AND ADD TO TREE IN SAME SCAN
-
 public class AlgoSRPLandmark {
 
 		//for statistics
@@ -257,8 +255,8 @@ public class AlgoSRPLandmark {
 			 for(Entry<Integer, List<Itemset>> entry: connectionTable.entrySet()) {
 				 int keyItem = entry.getKey();
 				
-				// firstly keyItem must be rare item
-				 if(itemFrequencyList.get(keyItem) >= preMinRareSupportRelative && itemFrequencyList.get(keyItem) < minSupportRelative ) {
+				// firstly keyItem must be >= preMinRareSupportRelative
+				 if(itemFrequencyList.get(keyItem) >= preMinRareSupportRelative) {
 					 List<Itemset> coItems = entry.getValue();
 					 for(int i = 0; i < coItems.size(); i++) {
 						 
@@ -305,8 +303,8 @@ public class AlgoSRPLandmark {
 		   // convert the minimum rare support as percentage to a minimum rare support
 		   this.preMinRareSupportRelative = (int) Math.ceil(preminraresupp * batchCount);
 		   this.minSupportRelative = (int) Math.ceil(minsupp * batchCount); 
-		   System.out.println("THis is RARESUP: " + this.preMinRareSupportRelative);
-		   System.out.println("THIS IS FREQSUP: " + this.minSupportRelative);
+		   //System.out.println("THis is RARESUP: " + this.preMinRareSupportRelative);
+		   //System.out.println("THIS IS FREQSUP: " + this.minSupportRelative);
 		   
 		   //DEBUG
 //		   System.out.println("THIS IS THE FREQUENCY LIST");
@@ -314,17 +312,17 @@ public class AlgoSRPLandmark {
 //			      System.out.println(entry + "\n");
 //		   }
 //		   
-		   System.out.println("THIS IS THE CONNECTION TABLE");
-		   for(Entry<Integer, List<Itemset>> entry: connectionTable.entrySet()) {
-			      System.out.print(entry.getKey() + ": [");
-			      List<Itemset> val = entry.getValue();
-			      for(int i = 0; i < val.size(); i++) {
-			    	  System.out.print(val.get(i).itemset[0] + "=" + val.get(i).getAbsoluteSupport());
-			    	  System.out.print(", ");
-			      }
-			      System.out.println("]");
-		   }
-		   
+//		   System.out.println("THIS IS THE CONNECTION TABLE");
+//		   for(Entry<Integer, List<Itemset>> entry: connectionTable.entrySet()) {
+//			      System.out.print(entry.getKey() + ": [");
+//			      List<Itemset> val = entry.getValue();
+//			      for(int i = 0; i < val.size(); i++) {
+//			    	  System.out.print(val.get(i).itemset[0] + "=" + val.get(i).getAbsoluteSupport());
+//			    	  System.out.print(", ");
+//			      }
+//			      System.out.println("]");
+//		   }
+//		   
 		   //return new Itemsets("EMPTY TEST");
 		   //}
 		   // ENDDEBUG
@@ -339,8 +337,6 @@ public class AlgoSRPLandmark {
 		   
 		   final Set<Integer> rSet = buildR(itemFrequencyList);
 		   final Set<Integer> cSet = buildC(connectionTable, itemFrequencyList, rSet);
-		   System.out.println("THIS IS R: " + rSet);
-		   System.out.println("THIS IS C: " + cSet);
 		  
 		   // (5) We start to mine the RP-Tree by calling the recursive method.
 		   // Initially, the prefix alpha is empty.
@@ -369,7 +365,7 @@ public class AlgoSRPLandmark {
 		   // done processing batch
 		   batchCount = 0;
 		   
-		   Itemsets ans = patterns;//clean(patterns, rSet);
+		   Itemsets ans = patterns;
 
 		   // return the result (if saved to memory)
 		   return ans;
@@ -443,13 +439,6 @@ public class AlgoSRPLandmark {
 		       
 		       // get the item support for the FP-Tree
 		       int support = mapSupport.get(item);
-		       
-		       
-		       // CONSTRUCT (CONDITIONAL PATTERN-BASE and FP-TREE) IF ITEM IS RARE or ITEM IS IN CONNECTION TABLE
-		       // i.e. skip if not true
-		       if(!rSet.contains(item) && !cSet.contains(item)) {
-		    	   continue;
-		       }
 		                     
 		       // Create Beta by concatenating prefix Alpha by adding the current item to alpha
 		       prefix[prefixLength] = item;
@@ -462,7 +451,13 @@ public class AlgoSRPLandmark {
 		       //If not the root OR support < minimum relative support; save item set
 		       if ((prefixLength > 0) || (support < this.minSupportRelative))
 		       		saveItemset(prefix, prefixLength+1, betaSupport, rSet);
-		     
+		       
+		       
+		       // CONSTRUCT (CONDITIONAL PATTERN-BASE and FP-TREE) IF ITEM IS RARE or ITEM IS IN CONNECTION TABLE
+		       // i.e. skip if not true
+		       if(!rSet.contains(item) && !cSet.contains(item)) {
+		    	   continue;
+		       }
 
 		       if(prefixLength+1 < maxPatternLength){
 		         // === (A) Construct beta's conditional pattern base ===
@@ -521,6 +516,12 @@ public class AlgoSRPLandmark {
 		         if(treeBeta.root.childs.size() > 0){
 		           // Create the header list.
 		           treeBeta.createHeaderList(mapSupportBeta);
+		           
+		             //DEBUG
+			         //if(item == 110) {
+			        //	 System.out.println(treeBeta.toString());
+			         //}
+			         //ENDDEBUG
 		        
 		           // recursive call
 		           rpgrowth(treeBeta, prefix, prefixLength+1, betaSupport, mapSupportBeta, depth+1, rSet, cSet);	         
@@ -568,10 +569,16 @@ public class AlgoSRPLandmark {
 		   }
 		 }
 		 
-		 // Ensure itemset: 
-		 //		- itemset >= preMinRare
-		 // 	- itemset < preMinFreq
-		 // 	- itemset contains at least 1 rare item
+		 /**
+		  * Ensure itemset: 
+		  *		- itemset >= preMinRare
+		  * 	- itemset < preMinFreq
+		  *	- itemset contains at least 1 rare item
+		  * @param itemset
+		  * @param support
+		  * @param rSet
+		  * @return
+		  */
 		 public boolean validRare(int[] itemset, int support, Set<Integer> rSet) {
 			 if(support < this.preMinRareSupportRelative || support >= this.minSupportRelative)
 				 return false;
@@ -594,8 +601,7 @@ public class AlgoSRPLandmark {
 				return;
 			}
 			
-		   // increase the number of item sets found for statistics purpose
-		   itemsetCount++;
+		   
 
 		   // if the result should be saved to a file
 		   if(writer != null){
@@ -631,6 +637,9 @@ public class AlgoSRPLandmark {
 		     
 		     // ensure it is valid
 		     if(!validRare(itemsetArray, support, rSet)){return;}
+		     
+		     // increase the number of item sets found for statistics purpose
+		 	 itemsetCount++;
 		     
 		     Itemset itemsetObj = new Itemset(itemsetArray);
 		     itemsetObj.setAbsoluteSupport(support);
@@ -675,7 +684,7 @@ public class AlgoSRPLandmark {
 		  * Print statistics about the algorithm execution to System.out.
 		  */
 		 public void printStats() {
-		   System.out.println("=============  RP-GROWTH 2.38 - STATS =============");
+		   System.out.println("=============  SRP-GROWTH LANDMARK - STATS =============");
 		   long temps = endTime - startTimestamp;
 		   System.out.println(" Transactions count from database : " + transactionCount);
 		   System.out.print(" Max memory usage: " + MemoryLogger.getInstance().getMaxMemory() + " mb \n");
