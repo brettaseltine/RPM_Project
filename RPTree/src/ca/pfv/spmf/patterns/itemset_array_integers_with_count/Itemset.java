@@ -21,6 +21,11 @@ import ca.pfv.spmf.patterns.AbstractOrderedItemset;
 * SPMF. If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+ * This file has been modified to override equals method.
+ * Brett Aseltine
+ */
+
 /**
  * This class represents an itemset (a set of items) implemented as an array of integers with
  * a variable to store the support count of the itemset.
@@ -168,7 +173,12 @@ public class Itemset extends AbstractOrderedItemset{
 	
 	@Override
 	public int hashCode() {
-		
 		return Arrays.hashCode(itemset);
+	}
+	
+	@Override
+	public boolean equals(Object other) {
+		Itemset b = (Itemset) other;
+		return this.isEqualTo(b.itemset);
 	}
 }

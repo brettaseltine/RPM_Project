@@ -18,10 +18,8 @@ package ca.pfv.spmf._group7.rpgrowthstreaming;
 */
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,8 +28,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.LinkedList;
+
 
 import ca.pfv.spmf.algorithms.frequentpatterns.fpgrowth.FPTree;
 import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemset;
@@ -65,12 +65,11 @@ public class AlgoRPStreamLandmark {
 		 private int transactionCount = 0; 		// transaction count in the database following landmark (used transactions)
 		 private int seenTransactionCount = 0;	// number of transactions seen in stream (before and after landmark)
 		 private int itemsetCount; // number of freq. itemsets found
+		 private int numBatches = 0;
 
 		 // parameter
 		 public int preMinRareSupportRelative;//the relative minimum rare support
 		 public int minSupportRelative; // the relative minimum support
-		 
-		 BufferedWriter writer = null; // object to write the output file
 
 		 // The  patterns that are found
 		 // (if the user want to keep them into memory)
@@ -86,11 +85,6 @@ public class AlgoRPStreamLandmark {
 		 // another buffer for storing rpnodes in a single path of the tree
 		 private RPNode[] rpNodeTempBuffer = null;
 
-		 // This buffer is used to store an itemset that will be written to file
-		 // so that the algorithm can sort the itemset before it is output to file
-		 // (when the user choose to output result to file).
-		 private int[] itemsetOutputBuffer = null;
-
 		 /** maximum pattern length */
 		 private int maxPatternLength = 1000;
 		 
@@ -98,7 +92,7 @@ public class AlgoRPStreamLandmark {
 		private int minPatternLength = 0;
 		
 		// OUR ADDED VARIABLES
-		private Itemsets potentialResult = new Itemsets("RARE ITEMSETS");
+		private Map<Itemset, Integer> potentialResult = new HashMap<>();	// key = itemset, value = support
 		
 		private BufferedReader reader1;	// performs 1st and only scan
 		private Queue<String> curBatch = new LinkedList<>();	// each element holds transaction line as String
@@ -135,59 +129,33 @@ public class AlgoRPStreamLandmark {
 		   //initialize tool to record memory usage
 		   MemoryLogger.getInstance().reset();
 		   MemoryLogger.getInstance().checkMemory();
-
-//		   // if the user want to keep the result into memory
-//		   if(output == null){
-//		     writer = null;
-//		     patterns =  new Itemsets("RARE ITEMSETS"); 
-//		     }else{ // if the user want to save the result to a file
-//		     patterns = null;
-//		     writer = new BufferedWriter(new FileWriter(output));
-//		     itemsetOutputBuffer = new int[BUFFERS_SIZE];
-//		   }
 		   
 		   // set file reader
 		   reader1 = new BufferedReader(new FileReader(input));
 		   
-		   int batchNum = 0;
 		   while(isStream) {
-			   System.out.println("PROCESSING BATCH: " + batchNum);
-			   Itemsets mined = runInstance(minsupp, preminraresupp, landmark);
-			   saveMinedItemsets(potentialResult, mined);
-		       batchNum++;
+			   System.out.println("PROCESSING BATCH: " + numBatches);
+			   Itemsets mined = processBatch(minsupp, preminraresupp, landmark);
+			   aggregateMinedItemsets(mined);
+		       numBatches++;
 		   }
 		   		
-		   return getTrulyRare(potentialResult, minraresupp);
+		   Itemsets result = getTrulyRare(minraresupp);
+		   
+		   this.itemsetCount = result.getItemsetsCount();
+		   
+		   // record the execution end time
+		   endTime= System.currentTimeMillis();
+
+		   // check the memory usage
+		   MemoryLogger.getInstance().checkMemory();
+		   
+		   return result;
 		   
 		 }
 		 
-		 
-		 public void saveMinedItemsets(Itemsets destination, Itemsets input) {
-			 List<List<Itemset>> levels = input.getLevels();
-			 for(int i = 0; i < levels.size(); i++) {
-				 List<Itemset> level = levels.get(i);
-				 for(int j = 0; j < level.size(); j++) {
-					 destination.addItemset(level.get(j), i);
-				 }
-			 }
-		 }
-		 
-		 public Itemsets getTrulyRare(Itemsets potentially, double minraresupp) {
-			 Itemsets truly = new Itemsets("TRULY RARE ITEMSETS");
-			 List<List<Itemset>> levels = potentially.getLevels();
-			 for(int i = 0; i < levels.size(); i++) {
-				 List<Itemset> level = levels.get(i);
-				 for(int j = 0; j < level.size(); j++) {
-					 Itemset cur = level.get(j);
-					 if(cur.support >= minraresupp)
-					 truly.addItemset(level.get(j), i);
-				 }
-			 }
-			 
-			 return truly;
-		 }
 		   
-		 public Itemsets runInstance(double minsupp, double preminraresupp, int landmark) throws FileNotFoundException, IOException {
+		 public Itemsets processBatch(double minsupp, double preminraresupp, int landmark) throws FileNotFoundException, IOException {
 		   // initialize result holding variable 
 		   patterns = new Itemsets("BATCH RARE ITEMSETS");
 		   
@@ -201,7 +169,7 @@ public class AlgoRPStreamLandmark {
 		   this.preMinRareSupportRelative = (int) Math.ceil(preminraresupp * batchCount);
 		   this.minSupportRelative = (int) Math.ceil(minsupp * batchCount); 
 		   
-		   // (2) Scan the database again to build the initial RP-Tree
+		   // (2) Scan batch from memory to build the initial RP-Tree
 		   // Before inserting a transaction in the RPTree, we sort the items
 		   // by descending order of support.  We ignore items that
 		   // have over the minimum support.
@@ -261,7 +229,7 @@ public class AlgoRPStreamLandmark {
 		   // We create the header table for the tree using the calculated support of single items
 		   tree.createHeaderList(mapSupport);
 		   
-		   //System.out.println("THIS IS THE TREE");
+		   //System.out.println("INITIAL TREE");
 		   //System.out.println(tree.toString());
 		  
 		   // (5) We start to mine the RP-Tree by calling the recursive method.
@@ -277,16 +245,6 @@ public class AlgoRPStreamLandmark {
 		     // which should generally be the case.
 		     rpgrowth(tree, itemsetBuffer, 0, batchCount, mapSupport);
 		   }
-
-		   // close the output file if the result was saved to a file
-		   if(writer != null){
-		     writer.close();
-		   }
-		   // record the execution end time
-		   endTime= System.currentTimeMillis();
-
-		   // check the memory usage
-		   MemoryLogger.getInstance().checkMemory();
 		   
 		   // done processing batch
 		   curBatch.clear();
@@ -295,8 +253,6 @@ public class AlgoRPStreamLandmark {
 		   // return the result (if saved to memory)
 		   return patterns;
 		 }
-
-
 
 		 /**
 		  * Mine an RP-Tree having more than one path.
@@ -550,51 +506,73 @@ public class AlgoRPStreamLandmark {
 		  * keep into memory if the user prefer that the result be saved into memory.
 		  */
 		 private void saveItemset(int [] itemset, int itemsetLength, int support) throws IOException {
-			if (itemsetLength < minPatternLength) {
-				return;
-			}
-
-		   // increase the number of item sets found for statistics purpose
-		   itemsetCount++;
-
-		   // if the result should be saved to a file
-		   if(writer != null){
-		     // copy the item set in the output buffer and sort items
-		     System.arraycopy(itemset, 0, itemsetOutputBuffer, 0, itemsetLength);
-		     Arrays.sort(itemsetOutputBuffer, 0, itemsetLength);
-
-		     // Create a string buffer
-		     StringBuilder buffer = new StringBuilder();
-		     // write the items of the item set
-		     for(int i=0; i< itemsetLength; i++){
-		       buffer.append(itemsetOutputBuffer[i]);
-		       if(i != itemsetLength-1){
-		         buffer.append(' ');
-		       }
-		     }
-		     // Then, write the support
-		     buffer.append(" #SUP: ");
-		     buffer.append(support);
-		     // write to file and create a new line
-		     writer.write(buffer.toString());
-		     writer.newLine();
-
-		   }// otherwise the result is kept into memory
-		   else{
+			  if (itemsetLength < minPatternLength) {
+			  	return;
+			  }
+		   
 		     // create an object Itemset and add it to the set of patterns
 		     // found.
 		     int[] itemsetArray = new int[itemsetLength];
 		     System.arraycopy(itemset, 0, itemsetArray, 0, itemsetLength);
-
+	
 		     // sort the itemset so that it is sorted according to lexical ordering before we show it to the user
 		     Arrays.sort(itemsetArray);
-
+	
 		     Itemset itemsetObj = new Itemset(itemsetArray);
 		     itemsetObj.setAbsoluteSupport(support);
 		     patterns.addItemset(itemsetObj, itemsetLength);
-		   }
 		 }
 
+		 
+		 // **THIS DOES NOT AGGREGATE SUPPORT BUT IT SHOULD
+		 public void saveMinedItemsets(Itemsets destination, Itemsets input) {
+			 List<List<Itemset>> levels = input.getLevels();
+			 for(int i = 0; i < levels.size(); i++) {
+				 List<Itemset> level = levels.get(i);
+				 for(int j = 0; j < level.size(); j++) {
+					 destination.addItemset(level.get(j), i);
+				 }
+			 }
+		 }
+		 
+		 
+		 //****NEED TO FIND A WAY TO UPDATE RESULT FAST
+		 public void aggregateMinedItemsets(Itemsets input) {
+			 List<List<Itemset>> levels = input.getLevels();			 
+			 
+			 for(int i = 0; i < levels.size(); i++) {
+				 List<Itemset> curLevel = levels.get(i);
+				 
+				 for(int j = 0; j < curLevel.size(); j++) {
+					 Itemset curItem = curLevel.get(j);
+					 				 
+					 this.potentialResult.put(curItem, potentialResult.getOrDefault(curItem,  0) + curItem.getAbsoluteSupport());
+				 }
+				 
+			 }
+			 
+		 }
+		 
+		 
+		 public Itemsets getTrulyRare(double minraresupp) {
+			 Itemsets truly = new Itemsets("TRULY RARE ITEMSETS");
+			 int minRareSupRelative = (int) (minraresupp * this.transactionCount);
+			 
+			 for(Entry<Itemset, Integer> entry: potentialResult.entrySet()) {
+				 Itemset item = entry.getKey();
+				 int support = entry.getValue();
+				 
+				 if(support >= minRareSupRelative) {
+					 
+					 item.setAbsoluteSupport(support);
+					 truly.addItemset(item, item.size());
+				 }
+			 }
+			 
+			 return truly;
+		 }
+		 
+		 
 		 /**
 		  * Print statistics about the algorithm execution to System.out.
 		  */
@@ -602,6 +580,7 @@ public class AlgoRPStreamLandmark {
 		   System.out.println("=============  RP-GROWTH 2.38 - STATS =============");
 		   long temps = endTime - startTimestamp;
 		   System.out.println(" Transactions count from database : " + transactionCount);
+		   System.out.println(" Number of batches : " + numBatches);
 		   System.out.print(" Max memory usage: " + MemoryLogger.getInstance().getMaxMemory() + " mb \n");
 		   System.out.println(" Rare itemsets count : " + itemsetCount);
 		   System.out.println(" Total time ~ " + temps + " ms");

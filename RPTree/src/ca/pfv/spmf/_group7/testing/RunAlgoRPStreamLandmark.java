@@ -16,15 +16,14 @@ import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemsets;
 public class RunAlgoRPStreamLandmark {
 	public static void main(String[] arg) throws FileNotFoundException, IOException{
 		//load the transaction database
-		String fileName = "mushrooms.txt";
+		String fileName = "context2RP.txt";
 		System.out.println("INPUT FILE: " + fileName + "\n");
 		String input = fileToPath(fileName);
-		//System.out.println("Using file: " + fileName + "\n\n");
 		
 		//threshold range [minimum rare (min) and minimum support (max)]
-		double minsup = 0.2;
-		double minraresup = 0.1;
-		double preminraresup = 0.1;
+		double minsup = 0.6;
+		double minraresup = 0.2;
+		double preminraresup = 0.2;
 		int landmark = 1;
 		
 		//Apply the RPGrowth algorithm

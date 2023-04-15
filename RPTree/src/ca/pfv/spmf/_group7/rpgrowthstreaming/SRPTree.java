@@ -123,7 +123,7 @@ public class SRPTree {
 		 * @param relativeMinsupp
 		 * @param relativeMinRareSupp
 		 */
-		void addPrefixPath(List<RPNode> prefixPath, Map<Integer, Integer> mapSupportBeta, int relativeMinsupp, int relativeMinRareSupp) {
+		void addPrefixPath(List<RPNode> prefixPath, Map<Integer, Integer> mapSupportBeta, int relativeMinsupp, int relativeMinRareSupp, Set<Integer> cSet) {
 			// the first element of the prefix path contains the path support
 			int pathCount = prefixPath.get(0).counter;  
 			
@@ -135,8 +135,8 @@ public class SRPTree {
 				// if the item is frequent(if the item is below the relative min rare support and
 				// above the relative min support threshold) we skip it.
 				
-				// SRP SPECIFIC: Don't skip frequent items in prefix path
-				if( /*mapSupportBeta.get(pathItem.itemID) < relativeMinsupp && */ mapSupportBeta.get(pathItem.itemID) >= relativeMinRareSupp){
+				// SRP-Tree SPECIFIC: We cannot skip frequent items in prefix path
+				if( /* (mapSupportBeta.get(pathItem.itemID) < relativeMinsupp) && */ mapSupportBeta.get(pathItem.itemID) >= relativeMinRareSupp){
 		
 					// look if there is a node already in the RP-Tree
 					RPNode child = currentNode.getChildWithID(pathItem.itemID);
@@ -162,7 +162,6 @@ public class SRPTree {
 		
 		/**
 		 * Method for creating the list of items in the header table, 
-		 *  in descending order of support.
 		 * @param mapSupport the frequencies of each item (key: item  value: support)
 		 */
 		void createHeaderList(final Map<Integer, Integer> mapSupport) {
@@ -170,16 +169,17 @@ public class SRPTree {
 			// all the items stored in the map received as parameter
 			headerList =  new ArrayList<Integer>(mapItemNodes.keySet());
 			
-			// sort the header table by decreasing order of support
-			Collections.sort(headerList, new Comparator<Integer>(){
-				public int compare(Integer id1, Integer id2){
-					// compare the support
-					int compare = mapSupport.get(id2) - mapSupport.get(id1);
-					// if the same frequency, we check the lexical ordering!
-					// otherwise we use the support
-					return (compare == 0) ? (id1 - id2) : compare;
-				}
-			});
+			// sort the header table lexicographically
+			Collections.sort(headerList);
+//			Collections.sort(headerList, new Comparator<Integer>(){
+//				public int compare(Integer id1, Integer id2){
+//					// compare the support
+//					int compare = mapSupport.get(id2) - mapSupport.get(id1);
+//					// if the same frequency, we check the lexical ordering!
+//					// otherwise we use the support
+//					return (compare == 0) ? (id1 - id2) : compare;
+//				}
+//			});
 		}
 		
 		@Override

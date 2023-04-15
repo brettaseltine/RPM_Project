@@ -158,8 +158,8 @@ public class AlgoSRPLandmark {
 		       batchNum++;
 		   }
 		   		
-		   return potentialResult;
-		   // return getTrulyRare(potentialResult, minraresupp); // beneficial when using preminrare diff than minrare
+		   //return potentialResult;
+		   return getTrulyRare(potentialResult, minraresupp); // beneficial when using preminrare diff than minrare
 		   
 		 }
 		 
@@ -331,8 +331,8 @@ public class AlgoSRPLandmark {
 		 // MINE TREE
 		   // We create the header table for the tree based on lexicographical ordering
 		   tree.createHeaderList(itemFrequencyList);
-//		   System.out.println("INITIAL TREE WITH HEADER");
-//		   System.out.println(tree.toString());
+		   System.out.println("INITIAL TREE WITH HEADER");
+		   System.out.println(tree.toString());
 		   // 
 		   
 		   final Set<Integer> rSet = buildR(itemFrequencyList);
@@ -509,7 +509,7 @@ public class AlgoSRPLandmark {
 		         
 		         // Add each prefix path in the RP-tree.
 		         for(List<RPNode> prefixPath : prefixPaths){
-		           treeBeta.addPrefixPath(prefixPath, mapSupportBeta, minSupportRelative, preMinRareSupportRelative); 
+		           treeBeta.addPrefixPath(prefixPath, mapSupportBeta, minSupportRelative, preMinRareSupportRelative, cSet); 
 		         }
 
 		         // Mine recursively the Beta tree if the root has child(s)
