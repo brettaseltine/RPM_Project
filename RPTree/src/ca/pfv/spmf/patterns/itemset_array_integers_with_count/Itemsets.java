@@ -64,7 +64,7 @@ public class Itemsets{
 				System.out.print("  pattern " + patternCount + ":  ");
 				itemset.print();
 				// print the support of this itemset
-				System.out.print("support :  " + itemset.getAbsoluteSupport());
+				System.out.print("support :  " + itemset.getSupportString());
 //						+ itemset.getRelativeSupportAsString(nbObject));
 				patternCount++;
 				System.out.println("");

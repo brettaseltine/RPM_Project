@@ -91,6 +91,10 @@ public class Itemset extends AbstractOrderedItemset{
 		return support;
 	}
 	
+	public String getSupportString() {
+		return "" + support;
+	}
+	
 	/**
 	 * Get the size of this itemset 
 	 */

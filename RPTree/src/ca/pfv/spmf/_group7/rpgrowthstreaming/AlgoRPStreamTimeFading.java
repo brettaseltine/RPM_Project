@@ -57,13 +57,12 @@ import ca.pfv.spmf.tools.MemoryLogger;
  * @author Philippe Fournier-Viger, Ryan Benton, Blake Johns
  */
 
-public class AlgoRPStreamLandmark {
+public class AlgoRPStreamTimeFading {
 
 		//for statistics
 		 private long startTimestamp; // start time of the latest execution
 		 private long endTime; // end time of the latest execution
 		 private int transactionCount = 0; 		// transaction count in the database following landmark (used transactions)
-		 private int seenTransactionCount = 0;	// number of transactions seen in stream (before and after landmark)
 		 private int itemsetCount; // number of freq. itemsets found
 		 private int numBatches = 0;
 
@@ -92,7 +91,7 @@ public class AlgoRPStreamLandmark {
 		private int minPatternLength = 0;
 		
 		// OUR ADDED VARIABLES
-		private Map<Itemset, Integer> potentialResult = new HashMap<>();	// key = itemset, value = support
+		private Map<Itemset, Double> potentialResult = new HashMap<>();	// key = itemset, value = support
 		
 		private BufferedReader reader1;	// performs 1st and only scan
 		private Queue<String> curBatch = new LinkedList<>();	// each element holds transaction line as String
@@ -106,7 +105,7 @@ public class AlgoRPStreamLandmark {
 		 /**
 		  * Constructor
 		  */
-		 public AlgoRPStreamLandmark() {
+		 public AlgoRPStreamTimeFading() {
 
 		 }
 
@@ -120,7 +119,7 @@ public class AlgoRPStreamLandmark {
 		  * @return the result if no output file path is provided.
 		  * @throws IOException exception if error reading or writing files
 		  */
-		 public Itemsets runAlgorithm(String input, String output, double minsupp, double minraresupp, double preminraresupp, int landmark) throws FileNotFoundException, IOException {
+		 public Itemsets runAlgorithm(String input, String output, double minsupp, double minraresupp, double preminraresupp, double timeFactor) throws FileNotFoundException, IOException {
 		   // record start time
 		   startTimestamp = System.currentTimeMillis();
 		   // number of itemsets found
@@ -135,8 +134,8 @@ public class AlgoRPStreamLandmark {
 		   
 		   while(isStream) {
 			   System.out.println("PROCESSING BATCH: " + numBatches);
-			   Itemsets mined = processBatch(minsupp, preminraresupp, landmark);
-			   aggregateMinedItemsets(mined);
+			   Itemsets mined = processBatch(minsupp, preminraresupp);
+			   aggregateMinedItemsets(mined, timeFactor);
 		       numBatches++;
 		   }
 		   		
@@ -155,14 +154,14 @@ public class AlgoRPStreamLandmark {
 		 }
 		 
 		   
-		 public Itemsets processBatch(double minsupp, double preminraresupp, int landmark) throws FileNotFoundException, IOException {
+		 public Itemsets processBatch(double minsupp, double preminraresupp) throws FileNotFoundException, IOException {
 		   // initialize result holding variable 
 		   patterns = new Itemsets("BATCH RARE ITEMSETS");
 		   
 		   // (1) PREPROCESSING: Initial database scan to determine the frequency of each item
 		   // The frequency is stored in a map:
 		   //    key: item   value: support
-		   final Map<Integer, Integer> mapSupport = scanBatchToDetermineFrequencyOfSingleItems(landmark);
+		   final Map<Integer, Integer> mapSupport = scanBatchToDetermineFrequencyOfSingleItems();
 
 		   // convert the minimum support as percentage to a relative minimum support
 		   // convert the minimum rare support as percentage to a minimum rare support
@@ -449,7 +448,7 @@ public class AlgoRPStreamLandmark {
 		  * @throws IOException  exception if error while writing the file
 		  * @return a map for storing the support of each item (key: item, value: support)
 		  */
-		 private  Map<Integer, Integer> scanBatchToDetermineFrequencyOfSingleItems(int landmark) throws FileNotFoundException, IOException {
+		 private  Map<Integer, Integer> scanBatchToDetermineFrequencyOfSingleItems() throws FileNotFoundException, IOException {
 		   // a map for storing the support of each item (key: item, value: support)
 		    Map<Integer, Integer> mapSupport = new HashMap<Integer, Integer>();
 		   //Create object for reading the input file
@@ -464,31 +463,26 @@ public class AlgoRPStreamLandmark {
 		       continue;
 		     }
 		     
-		     seenTransactionCount++;
-		     
-		     // add transactions >= landmark
-		     if(seenTransactionCount >= landmark) {
-			     // add line to batch
-			     curBatch.add(line);
-	
-			     // split the line into items
-			     String[] lineSplited = line.split(" ");
-			     // for each item
-			     for(String itemString : lineSplited){
-			       // increase the support count of the item
-			       Integer item = Integer.parseInt(itemString);
-			       // increase the support count of the item
-			       Integer count = mapSupport.get(item);
-			       if(count == null){
-			         mapSupport.put(item, 1);
-			       }else{
-			         mapSupport.put(item, ++count);
-			       }
-			     }
-			     // increase the transaction count
-			     batchCount++;
-			     transactionCount++;
+		     // add line to batch
+		     curBatch.add(line);
+
+		     // split the line into items
+		     String[] lineSplited = line.split(" ");
+		     // for each item
+		     for(String itemString : lineSplited){
+		       // increase the support count of the item
+		       Integer item = Integer.parseInt(itemString);
+		       // increase the support count of the item
+		       Integer count = mapSupport.get(item);
+		       if(count == null){
+		         mapSupport.put(item, 1);
+		       }else{
+		         mapSupport.put(item, ++count);
+		       }
 		     }
+		     // increase the transaction count
+		     batchCount++;
+		     transactionCount++;
 		     
 		     // get next line/transaction
 		     line = reader1.readLine();
@@ -521,9 +515,9 @@ public class AlgoRPStreamLandmark {
 		     Itemset itemsetObj = new Itemset(itemsetArray);
 		     itemsetObj.setAbsoluteSupport(support);
 		     patterns.addItemset(itemsetObj, itemsetLength);
-		 }
+		 }	 
 		 
-		 public void aggregateMinedItemsets(Itemsets input) {
+		 public void aggregateMinedItemsets(Itemsets input, double timeFactor) {
 			 List<List<Itemset>> levels = input.getLevels();			 
 			 
 			 for(int i = 0; i < levels.size(); i++) {
@@ -532,7 +526,7 @@ public class AlgoRPStreamLandmark {
 				 for(int j = 0; j < curLevel.size(); j++) {
 					 Itemset curItem = curLevel.get(j);
 					 				 
-					 this.potentialResult.put(curItem, potentialResult.getOrDefault(curItem,  0) + curItem.getAbsoluteSupport());
+					 this.potentialResult.put(curItem, potentialResult.getOrDefault(curItem,  0.0)*timeFactor + curItem.getAbsoluteSupport());
 				 }
 				 
 			 }
@@ -544,14 +538,14 @@ public class AlgoRPStreamLandmark {
 			 Itemsets truly = new Itemsets("TRULY RARE ITEMSETS");
 			 int minRareSupRelative = (int) (minraresupp * this.transactionCount);
 			 
-			 for(Entry<Itemset, Integer> entry: potentialResult.entrySet()) {
+			 for(Entry<Itemset, Double> entry: potentialResult.entrySet()) {
 				 Itemset item = entry.getKey();
-				 int support = entry.getValue();
+				 double support = entry.getValue();
 				 
 				 if(support >= minRareSupRelative) {
 					 
-					 item.setAbsoluteSupport(support);
-					 truly.addItemset(item, item.size());
+					 Itemset newItem = new ItemsetDouble(item.itemset, support);
+					 truly.addItemset(newItem, item.size());
 				 }
 			 }
 			 
