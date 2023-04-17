@@ -39,22 +39,17 @@ import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemsets;
 import ca.pfv.spmf.tools.MemoryLogger;
 
 /** 
- * This is an implementation of the Rare Pattern Tree Mining algorithm using the FP-Growth algorithm.
- * More information on rare pattern tree mining can be found in the paper here:
- * "RP-Tree: Rare Pattern Tree Mining",
- * A. Cuzzocrea and U. Dayal (Eds.): Data Warehousing and Knowledge Discovery 2011, LNCS 6862, pp. 277�288, 2011
+ * This is an implementation of the Rare Pattern Stream Sliding Window algorithm using the RP-Growth algorithm.
  * 
- * The FP-Growth algorithm was originally created by Philippe Fournier-Viger and modified by 
- * Blake Johns and Ryan Benton.
+ * The RP-Tree algorithm was originally created by Ryan Benton and Blake Johns.
  * 
- * This is an optimized version that saves the result to a file
- * or keep it into memory if no output path is provided
- * by the user to the runAlgorithm method().
+ * This is an optimized version that saves the result into memory.
  *
+ * @see RPTree
  * @see FPTree
  * @see Itemset
  * @see Itemsets
- * @author Philippe Fournier-Viger, Ryan Benton, Blake Johns
+ * @author Brett Aseltine, Ryan Benton, Blake Johns
  */
 
 public class AlgoRPStreamSlidingWindow {

@@ -1,22 +1,5 @@
 package ca.pfv.spmf._group7.rpgrowthstreaming;
 
-/*This file is copyright (c) 2018 Ryan Benton and Blake Johns
-*
-* This file is part of the SPMF DATA MINING SOFTWARE
-* (http://www.philippe-fournier-viger.com/spmf).
-*
-* SPMF is free software: you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation, either version 3 of the License, or (at your option) any later
-* version.
-*
-* SPMF is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* You should have received a copy of the GNU General Public License along with
-* SPMF. If not, see <http://www.gnu.org/licenses/>.
-*/
-
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -39,22 +22,17 @@ import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemsets;
 import ca.pfv.spmf.tools.MemoryLogger;
 
 /** 
- * This is an implementation of the Rare Pattern Tree Mining algorithm using the FP-Growth algorithm.
- * More information on rare pattern tree mining can be found in the paper here:
- * "RP-Tree: Rare Pattern Tree Mining",
- * A. Cuzzocrea and U. Dayal (Eds.): Data Warehousing and Knowledge Discovery 2011, LNCS 6862, pp. 277�288, 2011
+ * This is an implementation of the Rare Pattern Stream Time-Fading algorithm using the RP-Growth algorithm.
  * 
- * The FP-Growth algorithm was originally created by Philippe Fournier-Viger and modified by 
- * Blake Johns and Ryan Benton.
+ * The RP-Tree algorithm was originally created by Ryan Benton and Blake Johns.
  * 
- * This is an optimized version that saves the result to a file
- * or keep it into memory if no output path is provided
- * by the user to the runAlgorithm method().
+ * This is an optimized version that saves the result into memory.
  *
+ * @see RPTree
  * @see FPTree
  * @see Itemset
  * @see Itemsets
- * @author Philippe Fournier-Viger, Ryan Benton, Blake Johns
+ * @author Brett Aseltine, Ryan Benton, Blake Johns
  */
 
 public class AlgoRPStreamTimeFading {

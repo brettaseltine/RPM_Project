@@ -18,25 +18,19 @@ import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemsets;
 public class RunAlgoSRPLandmark {
 	public static void main(String[] arg) throws FileNotFoundException, IOException{
 		//load the transaction database
-		String fileName = "mushrooms.txt";  //"srpTestFile.txt";
+		String fileName = "context2RP.txt";  //"srpTestFile.txt";
 		System.out.println("INPUT FILE: " + fileName + "\n");
 		String input = fileToPath(fileName);
 		//System.out.println("Using file: " + fileName + "\n\n");
 		
 		//threshold range [minimum rare (min) and minimum support (max)]
-		double minsup = 0.2;      // 4.0/12.0;
-		double minraresup = 0.1;  //    2.0/12.0;
-		double preminraresup = 0.1; // 2.0/12.0;
+		double minsup = 0.6;      // 4.0/12.0;
+		double minraresup = 0.2;  //    2.0/12.0;
+		double preminraresup = 0.2; // 2.0/12.0;
 		int landmark = 1;
 		
 		//Apply the RPGrowth algorithm
 		AlgoSRPLandmark algo = new AlgoSRPLandmark();
-		
-		// Uncomment the following line to set the maximum pattern length (number of items per itemset, e.g. 3 )
-//		algo.setMaximumPatternLength(3);
-		
-		// Uncomment the following line to set the maximum pattern length (number of items per itemset, e.g. 2 )
-//		algo.setMinimumPatternLength(2);
 		
 		//Run the algo
 		//NOTE that here we use "null" as the output file path because we are saving to memory
