@@ -8,14 +8,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Queue;
 import java.util.LinkedList;
-
+import java.util.Set;
+import java.util.HashSet;
 
 import ca.pfv.spmf.algorithms.frequentpatterns.fpgrowth.FPTree;
 import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemset;
@@ -23,9 +22,9 @@ import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemsets;
 import ca.pfv.spmf.tools.MemoryLogger;
 
 /** 
- * This is an implementation of the Rare Pattern Stream Sliding Window algorithm using the RP-Growth algorithm.
+ * This is an implementation of the SRPLandmark algorithm using the RP-Growth algorithm.
  * 
- * The RP-Tree algorithm was originally created by Ryan Benton and Blake Johns.
+ * The RP-Tree algorithms was originally created by Ryan Benton and Blake Johns.
  * 
  * This is an optimized version that saves the result into memory.
  *
@@ -36,7 +35,7 @@ import ca.pfv.spmf.tools.MemoryLogger;
  * @author Brett Aseltine, Ryan Benton, Blake Johns
  */
 
-public class AlgoRPStreamSlidingWindow {
+public class AlgoSRPSlidingWindow {
 
 		//for statistics
 		 private long startTimestamp; // start time of the latest execution
@@ -48,6 +47,7 @@ public class AlgoRPStreamSlidingWindow {
 		 // parameter
 		 public int preMinRareSupportRelative;//the relative minimum rare support
 		 public int minSupportRelative; // the relative minimum support
+		 
 
 		 // The  patterns that are found
 		 // (if the user want to keep them into memory)
@@ -73,7 +73,6 @@ public class AlgoRPStreamSlidingWindow {
 		private Map<Itemset, Window> potentialResult = new HashMap<>();	// key = itemset, value = support
 		
 		private BufferedReader reader1;	// performs 1st and only scan
-		private Queue<String> curBatch = new LinkedList<>();	// each element holds transaction line as String
 		
 		private int batchCount = 0;
 		
@@ -83,7 +82,7 @@ public class AlgoRPStreamSlidingWindow {
 		 /**
 		  * Constructor
 		  */
-		 public AlgoRPStreamSlidingWindow() {
+		 public AlgoSRPSlidingWindow() {
 
 		 }
 
@@ -117,7 +116,7 @@ public class AlgoRPStreamSlidingWindow {
 		       numBatches++;
 		   }
 		   		
-		   Itemsets result = getTrulyRare(minraresupp);
+		   Itemsets result = getTrulyRare( minraresupp);
 		   
 		   this.itemsetCount = result.getItemsetsCount();
 		   
@@ -131,85 +130,149 @@ public class AlgoRPStreamSlidingWindow {
 		   
 		 }
 		 
+		 public List<Integer> getNextTransaction() {
+			 	
+	         List<Integer> transaction = new LinkedList<>();
+			 
+			 try {  
+			     String line = reader1.readLine();
+			     
+			     // check if end of stream
+				 if(line == null) isStream = false;
+				 // return null if not transaction data (end of stream or end of batch)
+				 if(line == null || line.equals("")) return null;
+
+		
+			     // split the line into items
+			     String[] lineSplited = line.split(" ");
+			     // for each item
+			     for(String itemString : lineSplited){
+			    	 // add to transaction
+			       Integer item = Integer.parseInt(itemString);
+			       transaction.add(item);
+			     }
+			     // increase the transaction count
+			     batchCount++;
+			     transactionCount++;		 
+				 
+				 return transaction;
+			 }
+			 
+			 catch (IOException e) {
+				 System.out.println(e);
+				 return null;
+			 }
+		 }
+		 
+		 public void updateItemFrequencyList(Map<Integer, Integer> ifl, List<Integer> t) {
+			 for(int item : t) {
+				 ifl.put(item, ifl.getOrDefault(item,0) + 1);
+			 }
+		 }
+		 
+		 public void updateConnectionTable(Map<Integer, List<Itemset>> connectionTable, List<Integer> t) {
+			 for(int i = 0; i < t.size(); i++) {
+				 
+				 int cur_item = t.get(i);
+				 connectionTable.putIfAbsent( cur_item, new LinkedList<>() );
+				 List<Itemset> item_connections = connectionTable.get(cur_item);
+				 
+				 // connect with future items
+				 for(int j = i+1; j < t.size(); j++) {
+					 int connect_item = t.get(j);
+					 
+					 boolean hasItem = false;
+					 for(int k = 0; k < item_connections.size(); k++) {
+						 if(item_connections.get(k).itemset[0] == connect_item) {
+							 hasItem = true;
+							 item_connections.get(k).support += 1;
+							 break;
+						 }
+					 }
+					 if(!hasItem) {
+						 Itemset new_item = new Itemset(connect_item);
+						 new_item.setAbsoluteSupport(1);
+						 item_connections.add(new_item);
+					 }
+				 }
+			 }
+		 }
+		 
+		 public Set<Integer> buildR(Map<Integer, Integer> itemFrequencyList) {
+			 Set<Integer> r = new HashSet<>();
+			 
+			 for(Entry<Integer, Integer> entry: itemFrequencyList.entrySet()) {
+				 if(entry.getValue() >= preMinRareSupportRelative && entry.getValue() < minSupportRelative) {
+					 r.add(entry.getKey());
+				 }
+			 }
+			 
+			 return r;
+		 }
+		 
+		 public Set<Integer> buildC(Map <Integer, List<Itemset>> connectionTable, Map<Integer, Integer> itemFrequencyList, Set<Integer> rSet) {
+			 Set<Integer> c = new HashSet<>();
+			 
+			 for(Entry<Integer, List<Itemset>> entry: connectionTable.entrySet()) {
+				 int keyItem = entry.getKey();
+				
+				// firstly keyItem must be >= preMinRareSupportRelative
+				 if(itemFrequencyList.get(keyItem) >= preMinRareSupportRelative) {
+					 List<Itemset> coItems = entry.getValue();
+					 for(int i = 0; i < coItems.size(); i++) {
+						 
+						 // only items with occuring frequency >= preMinRareSupport are added
+						 if(coItems.get(i).getAbsoluteSupport() >= preMinRareSupportRelative)
+							 c.add(coItems.get(i).itemset[0]);
+					 }
+				 }
+				
+			 }
+			 c.removeAll(rSet);
+			 return c;
+		 }
+		 
 		   
 		 public Itemsets processBatch(double minsupp, double preminraresupp) throws FileNotFoundException, IOException {
 		   // initialize result holding variable 
 		   patterns = new Itemsets("BATCH RARE ITEMSETS");
 		   
-		   // (1) PREPROCESSING: Initial database scan to determine the frequency of each item
-		   // The frequency is stored in a map:
-		   //    key: item   value: support
-		   final Map<Integer, Integer> mapSupport = scanBatchToDetermineFrequencyOfSingleItems();
-
+		   Map<Integer, Integer> itemFrequencyList = new HashMap<>();
+		   Map<Integer, List<Itemset> > connectionTable = new HashMap<>();
+		   SRPTree tree = new SRPTree();
+		   
+		   
+		 // BUILD TREE FOR CURRENT BATCH
+		   List<Integer> cur_t = getNextTransaction();
+		   while (cur_t != null) {
+			   
+			   // order cur_t in canonical ordering (lexicographic)
+			   Collections.sort(cur_t);
+			   
+			   updateItemFrequencyList(itemFrequencyList, cur_t);
+			   
+			   updateConnectionTable(connectionTable, cur_t);
+			   
+			   // updateTree
+			   tree.addTransaction(cur_t);
+			   
+			   cur_t = getNextTransaction();
+			   
+		   }
+		   
 		   // convert the minimum support as percentage to a relative minimum support
 		   // convert the minimum rare support as percentage to a minimum rare support
 		   this.preMinRareSupportRelative = (int) Math.ceil(preminraresupp * batchCount);
 		   this.minSupportRelative = (int) Math.ceil(minsupp * batchCount); 
-		   
-		   // (2) Scan batch from memory to build the initial RP-Tree
-		   // Before inserting a transaction in the RPTree, we sort the items
-		   // by descending order of support.  We ignore items that
-		   // have over the minimum support.
-		   RPTree tree = new RPTree();
-
-		   // read the batch in memory
-		   String line = curBatch.poll();
-		   // for each line (transaction) until the end of the file OR BATCH
-		   while( line != null && line != "\n"){
-		     // if the line is  a comment, is  empty or is a
-		     // kind of metadata
-		     if (line.isEmpty() == true ||	line.charAt(0) == '#' || line.charAt(0) == '%'
-		       || line.charAt(0) == '@') {
-		       continue;
-		     }
-
-		     String[] lineSplited = line.split(" ");
-		     List<Integer> transaction = new ArrayList<Integer>();
-
-		     // for each item in the transaction
-		     for(String itemString : lineSplited){
-		       Integer item = Integer.parseInt(itemString);
-		// only add items that have less than or equal to the minimum support 
-	    // and more than or equal to the minimum rare support
-		       if(mapSupport.get(item) >= preMinRareSupportRelative){
-		    	   //so the items being added are >= preMinRareSupportRelative
-		    	  transaction.add(item);}																
-		     }
-		
-		     // sort item in the transaction by descending order of support
-		     Collections.sort(transaction, new Comparator<Integer>(){ 
-		       public int compare(Integer item1, Integer item2){																	
-		         // compare the frequency
-		         int compare = mapSupport.get(item2) - mapSupport.get(item1);
-		         // if the same frequency, we check the lexical ordering!
-		         if(compare == 0){ 
-		           return (item1 - item2);}
-		         // otherwise, just use the frequency
-		         return compare;}	       
-		     });
-		     //Add the sorted items to the RP tree
-		     //If (last item in sorted transaction is < minRelSup, we accept the transaction)   		     
-		     //get the last item in transaction; because the last item in the transaction is the smallest count size
 		     
-		     	 if(!transaction.isEmpty()) {/* BUG FIX to account for a check against an empty transaction 01/29/2020 Blake Johns*/
-		     		 int myCheck = transaction.get(transaction.size() - 1);
-		     		 //take item and get its count
-		     		 int count = mapSupport.get(myCheck);
-		     		 //if the last item is below minSupportRelative then it is Rare by our definition, so it is of interest and added to the tree
-		     		 if(count < this.minSupportRelative) {
-		     			 tree.addTransaction(transaction);
-		     		 }	    	 
-		     	 }
-		     line = curBatch.poll();
-		   }
-
-		   // We create the header table for the tree using the calculated support of single items
-		   tree.createHeaderList(mapSupport);
+		 // MINE TREE
+		   // We create the header table for the tree based on lexicographical ordering
+		   tree.createHeaderList(itemFrequencyList);
 		   
-		   //System.out.println("INITIAL TREE");
-		   //System.out.println(tree.toString());
+		   final Set<Integer> rSet = buildR(itemFrequencyList);
+		   final Set<Integer> cSet = buildC(connectionTable, itemFrequencyList, rSet);
 		  
-		   // (5) We start to mine the RP-Tree by calling the recursive method.
+		   // (5) We start to mine the SRP-Tree by calling the recursive method.
 		   // Initially, the prefix alpha is empty.
 		   // if at least one item is not frequent
 		   if(tree.headerList.size() > 0) {
@@ -220,15 +283,14 @@ public class AlgoRPStreamSlidingWindow {
 		     // recursively generate rare itemsets using the RP-tree
 		     // Note: we assume that the initial RP-Tree has more than one path
 		     // which should generally be the case.
-		     rpgrowth(tree, itemsetBuffer, 0, batchCount, mapSupport);
-		   }
+		     rpgrowth(tree, itemsetBuffer, 0, batchCount, itemFrequencyList, 0, rSet, cSet);
+		   }		   
 		   
 		   // done processing batch
-		   curBatch.clear();
 		   batchCount = 0;
-
-		   // return the result (if saved to memory)
+		   
 		   return patterns;
+
 		 }
 
 		 /**
@@ -238,13 +300,12 @@ public class AlgoRPStreamSlidingWindow {
 		  * @param mapSupport the frequency of items in the RP-Tree
 		  * @throws IOException  exception if error writing the output file
 		  */
-		 private void rpgrowth(RPTree tree, int [] prefix, int prefixLength, int prefixSupport, Map<Integer, Integer> mapSupport) throws IOException {
+		 private void rpgrowth(SRPTree tree, int [] prefix, int prefixLength, int prefixSupport, Map<Integer, Integer> mapSupport, int depth, Set<Integer> rSet, Set<Integer> cSet) throws IOException {
 
 		   if(prefixLength == maxPatternLength)
 			   return;
 		   
 		  
-
 		   ////		======= DEBUG ========
 //				System.out.print("###### Prefix: ");
 //				for(int k=0; k< prefixLength; k++) {
@@ -290,18 +351,17 @@ public class AlgoRPStreamSlidingWindow {
 		   //If the prefix is NOT the root and there is a single path
 		   if ((singlePath) && (prefixLength > 0))
 		   {		    
-				   saveAllCombinationsOfPrefixPath(rpNodeTempBuffer, position, prefix, prefixLength);
+			   saveAllCombinationsOfPrefixPathWithRare(rpNodeTempBuffer, position, prefix, prefixLength, rSet);
 		   }
 		   else {
-		     // For each rare item in the header table list of the tree in reverse order.
+		     // For each ITEM in the header table list of the tree in reverse order.
 		     for(int i = tree.headerList.size()-1; i>=0; i--){
 		       // get the item
 		       Integer item = tree.headerList.get(i);
-
-		       // get the item support
+		       
+		       // get the item support for the FP-Tree
 		       int support = mapSupport.get(item);
-		       if((prefixLength == 0) && (support >= minSupportRelative))
-							return;
+		                     
 		       // Create Beta by concatenating prefix Alpha by adding the current item to alpha
 		       prefix[prefixLength] = item;
 
@@ -312,8 +372,14 @@ public class AlgoRPStreamSlidingWindow {
 		       
 		       //If not the root OR support < minimum relative support; save item set
 		       if ((prefixLength > 0) || (support < this.minSupportRelative))
-		       		saveItemset(prefix, prefixLength+1, betaSupport);
-		     
+		       		saveItemset(prefix, prefixLength+1, betaSupport, rSet);
+		       
+		       
+		       // CONSTRUCT (CONDITIONAL PATTERN-BASE and FP-TREE) IF ITEM IS RARE or ITEM IS IN CONNECTION TABLE
+		       // i.e. skip if not true
+		       if(!rSet.contains(item) && !cSet.contains(item)) {
+		    	   continue;
+		       }
 
 		       if(prefixLength+1 < maxPatternLength){
 		         // === (A) Construct beta's conditional pattern base ===
@@ -361,19 +427,26 @@ public class AlgoRPStreamSlidingWindow {
 
 		         // (B) Construct beta's conditional RP-Tree
 		         // Create the tree.
-		         RPTree treeBeta = new RPTree();
+		         SRPTree treeBeta = new SRPTree();
+		         
 		         // Add each prefix path in the RP-tree.
 		         for(List<RPNode> prefixPath : prefixPaths){
-		           treeBeta.addPrefixPath(prefixPath, mapSupportBeta, minSupportRelative, preMinRareSupportRelative); 
+		           treeBeta.addPrefixPath(prefixPath, mapSupportBeta, minSupportRelative, preMinRareSupportRelative, cSet); 
 		         }
 
 		         // Mine recursively the Beta tree if the root has child(s)
 		         if(treeBeta.root.childs.size() > 0){
 		           // Create the header list.
 		           treeBeta.createHeaderList(mapSupportBeta);
+		           
+		             //DEBUG
+			         //if(item == 110) {
+			        //	 System.out.println(treeBeta.toString());
+			         //}
+			         //ENDDEBUG
 		        
 		           // recursive call
-		           rpgrowth(treeBeta, prefix, prefixLength+1, betaSupport, mapSupportBeta);	         
+		           rpgrowth(treeBeta, prefix, prefixLength+1, betaSupport, mapSupportBeta, depth+1, rSet, cSet);	         
 		         }		        
 		       }
 		     }
@@ -388,8 +461,8 @@ public class AlgoRPStreamSlidingWindow {
 		  * @param prefixPath the prefix path
 		  * @throws IOException if exception while writing to output file
 		  */
-		 private void saveAllCombinationsOfPrefixPath(RPNode[] rpNodeTempBuffer, int position,
-		     int[] prefix, int prefixLength) throws IOException {
+		 private void saveAllCombinationsOfPrefixPathWithRare(RPNode[] rpNodeTempBuffer, int position,
+		     int[] prefix, int prefixLength, Set<Integer> rSet) throws IOException {
 		   int support = 0;		   
 		   		   if (prefixLength == 0) {
 			   return;}
@@ -414,62 +487,30 @@ public class AlgoRPStreamSlidingWindow {
 		           support = rpNodeTempBuffer[j].counter;
 		       }
 		     }
-		     // save the item set
-		     saveItemset(prefix, newPrefixLength, support);
+		    	saveItemset(prefix, newPrefixLength, support, rSet);
 		   }
 		 }
-
-
+		 
 		 /**
-		  * This method scans the input database to calculate the support of single items
-		  * @param input the path of the input file
-		  * @throws IOException  exception if error while writing the file
-		  * @return a map for storing the support of each item (key: item, value: support)
+		  * Ensure itemset: 
+		  *		- itemset >= preMinRare
+		  * 	- itemset < preMinFreq
+		  *	- itemset contains at least 1 rare item
+		  * @param itemset
+		  * @param support
+		  * @param rSet
+		  * @return
 		  */
-		 private  Map<Integer, Integer> scanBatchToDetermineFrequencyOfSingleItems() throws FileNotFoundException, IOException {
-		   // a map for storing the support of each item (key: item, value: support)
-		    Map<Integer, Integer> mapSupport = new HashMap<Integer, Integer>();
-		   //Create object for reading the input file
-		   
-		   String line = reader1.readLine();
-		   
-		   // for each line (transaction) until the end of file or batch (\n indicates batch end)
-		   while( line != null && !line.equals("") ){
-			   
-		     // if the line is a comment, is  empty or is a kind of metadata
-		     if (line.isEmpty() == true ||  line.charAt(0) == '#' || line.charAt(0) == '%' 	|| line.charAt(0) == '@') {
-		       continue;
-		     }
-
-		     // add line to batch
-		     curBatch.add(line);
-
-		     // split the line into items
-		     String[] lineSplited = line.split(" ");
-		     // for each item
-		     for(String itemString : lineSplited){
-		       // increase the support count of the item
-		       Integer item = Integer.parseInt(itemString);
-		       // increase the support count of the item
-		       Integer count = mapSupport.get(item);
-		       if(count == null){
-		         mapSupport.put(item, 1);
-		       }else{
-		         mapSupport.put(item, ++count);
-		       }
-		     }
-		     // increase the transaction count
-		     batchCount++;
-		     transactionCount++;
-		     
-		     // get next line/transaction
-		     line = reader1.readLine();
-		   }
-		   
-		   // check if end of stream
-		   if(line == null) isStream = false;
-
-		   return mapSupport;
+		 public boolean validRare(int[] itemset, int support, Set<Integer> rSet) {
+			 if(support < this.preMinRareSupportRelative || support >= this.minSupportRelative)
+				 return false;
+			 
+			 for(int i = 0; i < itemset.length; i++) {
+				 if( rSet.contains(itemset[i]) ) {
+					 return true;
+				 }
+			 }
+			 return false;
 		 }
 
 
@@ -477,11 +518,11 @@ public class AlgoRPStreamSlidingWindow {
 		  * Write an infrequent item set that is found to the output file or
 		  * keep into memory if the user prefer that the result be saved into memory.
 		  */
-		 private void saveItemset(int [] itemset, int itemsetLength, int support) throws IOException {
-			  if (itemsetLength < minPatternLength) {
-			  	return;
-			  }
-		   
+		 private void saveItemset(int [] itemset, int itemsetLength, int support, Set<Integer> rSet) throws IOException {
+			 if (itemsetLength < minPatternLength) {
+			  return;
+			 }
+
 		     // create an object Itemset and add it to the set of patterns
 		     // found.
 		     int[] itemsetArray = new int[itemsetLength];
@@ -489,7 +530,13 @@ public class AlgoRPStreamSlidingWindow {
 	
 		     // sort the itemset so that it is sorted according to lexical ordering before we show it to the user
 		     Arrays.sort(itemsetArray);
-	
+		     
+		     // ensure it is valid
+		     if(!validRare(itemsetArray, support, rSet)){return;}
+		     
+		     // increase the number of item sets found for statistics purpose
+		 	 itemsetCount++;
+		     
 		     Itemset itemsetObj = new Itemset(itemsetArray);
 		     itemsetObj.setAbsoluteSupport(support);
 		     patterns.addItemset(itemsetObj, itemsetLength);
@@ -505,16 +552,13 @@ public class AlgoRPStreamSlidingWindow {
 					 Itemset curItem = curLevel.get(j);
 					 
 					 if(!potentialResult.containsKey(curItem)) {
-						 potentialResult.put(curItem, new Window(windowSize));
+						 potentialResult.put(curItem,  new Window(windowSize));
 					 }
 					 Window curWindow = potentialResult.get(curItem);
 					 curWindow.add(curItem.getAbsoluteSupport());
 				 }
-				 
 			 }
-			 
 		 }
-		 
 		 
 		 public Itemsets getTrulyRare(double minraresupp) {
 			 Itemsets truly = new Itemsets("TRULY RARE ITEMSETS");
@@ -533,16 +577,15 @@ public class AlgoRPStreamSlidingWindow {
 			 
 			 return truly;
 		 }
-		 
-		 
+
 		 /**
 		  * Print statistics about the algorithm execution to System.out.
 		  */
 		 public void printStats() {
-		   System.out.println("=============  RP-GROWTH 2.38 - STATS =============");
+		   System.out.println("=============  SRP-GROWTH Sliding Window - STATS =============");
 		   long temps = endTime - startTimestamp;
 		   System.out.println(" Transactions count from database : " + transactionCount);
-		   System.out.println(" Number of batches : " + numBatches);
+		   System.out.println(" Number of batches: " + numBatches);
 		   System.out.print(" Max memory usage: " + MemoryLogger.getInstance().getMaxMemory() + " mb \n");
 		   System.out.println(" Rare itemsets count : " + itemsetCount);
 		   System.out.println(" Total time ~ " + temps + " ms");

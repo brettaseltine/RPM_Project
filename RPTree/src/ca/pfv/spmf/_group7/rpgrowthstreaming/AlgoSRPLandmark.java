@@ -1,37 +1,17 @@
 package ca.pfv.spmf._group7.rpgrowthstreaming;
 
-/*This file is copyright (c) 2018 Ryan Benton and Blake Johns
-*
-* This file is part of the SPMF DATA MINING SOFTWARE
-* (http://www.philippe-fournier-viger.com/spmf).
-*
-* SPMF is free software: you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation, either version 3 of the License, or (at your option) any later
-* version.
-*
-* SPMF is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* You should have received a copy of the GNU General Public License along with
-* SPMF. If not, see <http://www.gnu.org/licenses/>.
-*/
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Queue;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.HashSet;
@@ -132,7 +112,7 @@ public class AlgoSRPLandmark {
 		   
 		   while(isStream) {
 			   System.out.println("PROCESSING BATCH: " + numBatches);
-			   Itemsets mined = runInstance(minsupp, preminraresupp, landmark);
+			   Itemsets mined = processBatch(minsupp, preminraresupp, landmark);
 			   aggregateMinedItemsets(mined);
 		       numBatches++;
 		   }
@@ -260,7 +240,7 @@ public class AlgoSRPLandmark {
 		 }
 		 
 		   
-		 public Itemsets runInstance(double minsupp, double preminraresupp, int landmark) throws FileNotFoundException, IOException {
+		 public Itemsets processBatch(double minsupp, double preminraresupp, int landmark) throws FileNotFoundException, IOException {
 		   // initialize result holding variable 
 		   patterns = new Itemsets("BATCH RARE ITEMSETS");
 		   
@@ -567,16 +547,6 @@ public class AlgoSRPLandmark {
 		     Itemset itemsetObj = new Itemset(itemsetArray);
 		     itemsetObj.setAbsoluteSupport(support);
 		     patterns.addItemset(itemsetObj, itemsetLength);
-		 }
-		 
-		 public void saveMinedItemsets(Itemsets destination, Itemsets input) {
-			 List<List<Itemset>> levels = input.getLevels();
-			 for(int i = 0; i < levels.size(); i++) {
-				 List<Itemset> level = levels.get(i);
-				 for(int j = 0; j < level.size(); j++) {
-					 destination.addItemset(level.get(j), i);
-				 }
-			 }
 		 }
 		 
 		 public void aggregateMinedItemsets(Itemsets input) {

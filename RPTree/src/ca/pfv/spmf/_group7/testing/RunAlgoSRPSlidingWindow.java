@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 
-import ca.pfv.spmf._group7.rpgrowthstreaming.AlgoSRPLandmark;
+import ca.pfv.spmf._group7.rpgrowthstreaming.AlgoSRPSlidingWindow;
 import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemsets;
 
 /**
@@ -13,7 +13,7 @@ import ca.pfv.spmf.patterns.itemset_array_integers_with_count.Itemsets;
  * @author Ryan Benton and Blake Johns
  */
 
-public class RunAlgoSRPLandmark {
+public class RunAlgoSRPSlidingWindow {
 	public static void main(String[] arg) throws FileNotFoundException, IOException{
 		//load the transaction database
 		String fileName = "context2RP.txt";  //"srpTestFile.txt";
@@ -25,14 +25,14 @@ public class RunAlgoSRPLandmark {
 		double minsup = 0.6;      // 4.0/12.0;
 		double minraresup = 0.2;  //    2.0/12.0;
 		double preminraresup = 0.2; // 2.0/12.0;
-		int landmark = 1;
+		int windowSize = 5;
 		
 		//Apply the RPGrowth algorithm
-		AlgoSRPLandmark algo = new AlgoSRPLandmark();
+		AlgoSRPSlidingWindow algo = new AlgoSRPSlidingWindow();
 		
 		//Run the algo
 		//NOTE that here we use "null" as the output file path because we are saving to memory
-		Itemsets patterns = algo.runAlgorithm(input, null, minsup, minraresup, preminraresup, landmark);
+		Itemsets patterns = algo.runAlgorithm(input, null, minsup, minraresup, preminraresup, windowSize);
 		algo.printStats();
 		
 		patterns.printItemsets(algo.getDatabaseSize());
