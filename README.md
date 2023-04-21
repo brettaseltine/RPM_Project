@@ -1,6 +1,8 @@
+The Github repository can be found at: https://github.com/brettaseltine/StreamRare
+
 Our files can be found at StreamRare/RPTree/src/ca/pfv/spmf/_group7
 (ie. in the _group7 folder)
 
-Copy RPTree folder in an ide (such as eclipse) and run algorithms from group 7 test package.
+To run, copy RPTree folder in an ide (eclipse recommended) and run algorithms from group 7 test package.
 
 Datasets can be obtained from http://fimi.uantwerpen.be/data/
