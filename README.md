@@ -1,7 +1,16 @@
 ## INFREQUENT PATTERN MINING ON DATA STREAMS WITH SRP-TREE AND RP-TREE VARIANTS
 
 ### Algorithms developed and implemented by Brett Aseltine
+#### The following algorithms have been implemented
+* RPStreamLandmark
+* RPStreamSlidingWindow
+* RPStreamTimeFading
+* SRPLandmark
+* SRPSlidingWindow
+* SRPTimeFading
 
-* Relevant files can be found at StreamRare/RPTree/src/ca/pfv/spmf/_group7 (ie. in the _group7 folder)
-* To run, copy RPTree folder in an ide (eclipse recommended) and run algorithms from group 7 test package.
+#### Execution Details
+* Relevant files can be found at RPM_Project/src/ca/pfv/spmf/_RarePatternMiningFiles
+* To run, copy RPM_Project folder in an ide (eclipse recommended) and run algorithms from testing folder.
+
 * Frequent Itemset Mining Dataset Repository datasets retrieved from http://fimi.uantwerpen.be/data/
