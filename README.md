@@ -1,10 +1,7 @@
-INTERMEDIATE RARE ITEMSET MINING FROM DATA STREAMS
-Group 14
-Brett Aseltine, Eran Efran, Jared Friesen, Eddie Wat
+INFREQUENT PATTERN MINING ON DATA STREAMS WITH SRP-TREE AND RP-TREE VARIANTS
+Algorithms developed and implemented by Brett Aseltine
 
-The Github repository can be found at: https://github.com/brettaseltine/StreamRare
-
-Our files can be found at StreamRare/RPTree/src/ca/pfv/spmf/_group7
+Relevant files can be found at StreamRare/RPTree/src/ca/pfv/spmf/_group7
 (ie. in the _group7 folder)
 
 To run, copy RPTree folder in an ide (eclipse recommended) and run algorithms from group 7 test package.
