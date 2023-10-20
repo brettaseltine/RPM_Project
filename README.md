@@ -1,4 +1,5 @@
 INFREQUENT PATTERN MINING ON DATA STREAMS WITH SRP-TREE AND RP-TREE VARIANTS
+
 Algorithms developed and implemented by Brett Aseltine
 
 Relevant files can be found at StreamRare/RPTree/src/ca/pfv/spmf/_group7
